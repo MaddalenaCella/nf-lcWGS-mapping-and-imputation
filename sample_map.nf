@@ -5,7 +5,7 @@
  */
 
 params.reads = "$baseDir/data/raw_reads/*_{1,2}.fq.gz"
-params.reference = "$baseDir/ref_genome/EquCab3.fna"
+params.reference = "$baseDir/ref_genome/*.fna"
 params.log = "fastqc_logs"
 params.trim = "data/trimmed"
 params.index = "ref_genome"

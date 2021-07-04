@@ -36,106 +36,48 @@ It uses [Nextflow](http://www.nextflow.io) as the execution backend. Please chec
 Singularity is the preferred container engine for running the pipeline in an HPC environment. In order to minimize the amount of issues that could arise we recommend the use of Singularity version 3.0 or higher. In my case I used Singularity version 3.6.1. The singularity images used were obtained from docker hub and singularity hub.
 
 ## Pipeline input
+Before you deploy the mapping pipeline, make sure you have the raw reds file in fq.gz format in the data/raw_reads/ directory and the reference genome sequence of your species in the ref_genome/ directory. Edit the name of your files as appropriate in the sample_map.nf script. 
 
-
-**NOTE**: Fastq files from paired-end data will be grouped together by `runID`.
-
-Here is an example from the test run:
-
-```
-sample1  test1   data/test1_1.fastq.gz   fastq   FqRd1
-sample1  test1   data/test1_2.fastq.gz   fastq   FqRd2
-```
-
-Sample and id can be the same in case you don't have/know sample identifiers:
+Before you deploy the imputation pipeline, the input files you need to have in your code directory are the following:
+* the mapped bam (.bam) file and its index file (.bai) in the data/merged/ directory (this is the output of the mapping pipeline, but you can add your own files and change the name accordingly in the sample_imputation.nf script)
+* the reference genome sequence of your species in the ref_genome/ directory.
+* a list of SNP calls in each chromosome of the reference panel (one file per chromosome). This can be obtained with the following line of code and the bioinformatic tool vcftools given you have all the reference's phased vcf.gz for each chromosome in your current directory. 
 
 ```
-run1  run1   data/test1_1.fastq.gz   fastq   FqRd1
-run1  run1   data/test1_2.fastq.gz   fastq   FqRd2
+vcftools --gzvcf chr$NUM.out.gt.vcf.gz --out chr$NUM.filtered --site-quality
+
+##generate SNP sites list in a format compatible with ANGSD
+awk 'NF{NF-=1};1' <chr$NUM.filtered.lqual >chr$NUM.sites
+sed '1d' chr$NUM.sites > chr$NUM.txt
+
 ```
+* the phased genotype calls of the reference panel divided by chromosome in the data/chr_phased_ref/ directory;
+* a list of mendelian and QTL traits of interest in the format: chr start end if you are interested in finding whether your sample's genotype for some traits of interest. If you are not interested in this analysis, please comment out the process named "pheno_search" before running the pipeline;
+* the name you want to use to identify your sample in a text file in the data/samplename directory.
 
 ## Pipeline results
-
-The paths of the resulting output files and the corresponding metadata are stored into the `pipeline.db` file (`TSV` formatted) which sits inside the current working folder. The format of this file is the same as the index file with few more columns:
-
-||||
-|-|-|-|
-1 | `sampleID` | the sample identifier, used to merge bam files in case multiple runs for the same sample are present
-2 | `runID`          | the run identifier (e.g. `test1`)
-3 | `path`        | the path to the fastq file
-4 | `type`        | the type (e.g. `bam`)
-5 | `view`        | an attribute that specifies the content of the file (e.g. `GenomeAlignments`)
-6 | `readType`    | the input data type (either `Single-End` or `Paired-End`)
-7 | `readStrand`  | the inferred experiment strandedness if any (it can be `NONE` for unstranded data, `SENSE` or `ANTISENSE` for single-end data, `MATE1_SENSE` or `MATE2_SENSE` for paired-end data.)
-
-Here is an example from the test run:
-
-```
-sample1   test1   /path/to/results/sample1.contigs.bed    bed      Contigs                     Paired-End   MATE2_SENSE
-sample1   test1   /path/to/results/sample1.isoforms.gtf   gtf      TranscriptQuantifications   Paired-End   MATE2_SENSE
-sample1   test1   /path/to/results/sample1.plusRaw.bw     bigWig   PlusRawSignal               Paired-End   MATE2_SENSE
-sample1   test1   /path/to/results/sample1.genes.gff      gtf      GeneQuantifications         Paired-End   MATE2_SENSE
-sample1   test1   /path/to/results/test1_m4_n10.bam       bam      GenomeAlignments            Paired-End   MATE2_SENSE
-sample1   test1   /path/to/results/sample1.minusRaw.bw    bigWig   MinusRawSignal              Paired-End   MATE2_SENSE
-```
-
 ### Output files
 
-The pipeline produces several output files during the workflow execution. Many files are to be considered temporary and can be removed once the pipeline completes. The following files are the ones reported in the `pipeline.db` file and are to be considered as the pipeline final output.
+The mapping pipeline produces two outputs: the mapped reads in the data/mapped directory and a merged and processed file (deduplicated and overlapping read pairs clipped) in the data/merged directory. If you want to intermediate files you can add the "publishDir" command as I show in the following example:
 
-#### Alignments to the reference genome
+```
+process	merge { 
+    label 'samtools'
+    publishDir params.merged, mode:"copy" //this line publishes the output of the "merge" process in the data/merge directory
 
-|views|
-|-|
-|`GenomeAlignments`|
+    input:
+        path(input) from quality_filtered2.collect()
+        path(index) from sam_indexed
 
-This BAM file contains information on the alignments to the reference genome. It includes all the reads from the FASTQ input. Reads that do not align to the reference are set as unmapped in the bam file. The file can be the product of several steps of the pipeline depending on the given input parameters. It is initially produced by the `mapping` step, then it can be the result of merging of different runs from the same experiment and finally it can run through a marking duplicates process that can eventually remove reads that are marked as duplicates.
+    output:
+        path "merged.bam" into sam2_merged     
 
-#### Alignments to the reference transcriptome
-
-|views|
-|-|
-|`TranscriptomeAlignments`|
-
-This BAM file contains information on the alignments to the reference transcriptome. It is generally used only for expression abundance estimation, as input in the `quantification` process. The file is generally produced in the `mapping` process and can be the result of merging of different runs from the same experiment.
-
-#### Alignments statistics
-
-|views|
-|-|
-|`BamStats`|
-
-This JSON file contains alignment statistics computed with the [bamstats](https://github.com/guigolab/bamstats) program. It also reports RNA-Seq quality check metrics agreed within the IHEC consortium.
-
-#### Signal tracks
-
-|views|
-|-|
-|`RawSignal`|
-|`MultipleRawSignal`|
-|`MinusRawSignal`|
-|`PlusRawSignal`|
-|`MultipleMinusRawSignal`|
-|`MultiplePlusRawSignal`|
-
-These BigWig files (one or two, depending on the strandedness of the input data) represent the RNA-Seq signal.
-
-#### Contigs
-
-|views|
-|-|
-|`Contigs`|
-
-This BED file reports RNA-seq contigs computed from the pooled signal tracks.
-
-#### Quantifications
-
-|views|
-|-|
-|`GeneQuantifications`|
-|`TranscriptQuantifications`|
-
-These two files report abundances for genes and transcripts in the processed RNA-seq samples. The format can be either GFF or TSV depending on the tool used to perform the quantification.
+    script:
+    """
+    samtools merge -f merged.bam $input                                                                                      
+    """
+}
+```
 
 ## Pipeline configuration
 
