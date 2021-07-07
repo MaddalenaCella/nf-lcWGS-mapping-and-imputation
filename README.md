@@ -36,8 +36,10 @@ It uses [Nextflow](http://www.nextflow.io) as the execution backend. Please chec
 Singularity is the preferred container engine for running the pipeline in an HPC environment. In order to minimize the amount of issues that could arise we recommend the use of Singularity version 3.0 or higher. In my case I used Singularity version 3.6.1. The singularity images used were obtained from docker hub and singularity hub.
 
 ## Pipeline input
+#### Mapping pipeline inputs
 Before you deploy the mapping pipeline, make sure you have the raw reds file in fq.gz format in the data/raw_reads/ directory and the reference genome sequence of your species in the ref_genome/ directory. Edit the name of your files as appropriate in the sample_map.nf script. 
 
+#### Mapping pipeline inputs
 Before you deploy the imputation pipeline, the input files you need to have in your code directory are the following:
 * the mapped bam (.bam) file and its index file (.bai) in the data/merged/ directory (this is the output of the mapping pipeline, but you can add your own files and change the name accordingly in the sample_imputation.nf script)
 * the reference genome sequence of your species in the ref_genome/ directory.
@@ -58,7 +60,7 @@ sed '1d' chr$NUM.sites > chr$NUM.txt
 ## Pipeline results
 ### Output files
 
-The mapping pipeline produces two outputs: 
+#### The mapping pipeline produces two outputs: 
 * the mapped reads in the data/mapped directory
 * a merged and processed file (deduplicated and overlapping read pairs clipped) in the data/merged directory. If you want to intermediate files you can add the "publishDir" command as I show in the following example:
 
@@ -81,7 +83,7 @@ process	merge {
 }
 ```
 
-The imputation pipeline produces:
+#### The imputation pipeline produces:
 * a combined vcf file (with variants from both the reference panel and the horse sample) in the results/combined directory;
 * this file converted in a Plink and Admixture compatible format: .bed, .bim and .fam files in the results/ancestry directory; 
 * a vcf file with the genotypes for the SNPs of interest found in the horse sample. 
@@ -90,11 +92,9 @@ The imputation pipeline produces:
 
 ### Executors
 
-Nextflow provides different `Executors` run the processes on the local machine, on a computational cluster or different cloud providers without the need to change the pipeline code.
+The `nextflow.config` file present in this repo is designed to be run on an HPC cluster that uses PBS Pro as job scheduler.
 
-By default the local executor is used, but it can be changed by using  the [executor](https://www.nextflow.io/docs/latest/config.html#scope-executor) configuration scope.
-
-For example, to run the pipeline in a computational cluster using Sun Grid Engine you can create a `nextflow.config` file in your current working directory with something like:
+If you are using a different job scheduler or you are running the code on a different cloud provider such as AWS, you can create your own `nextflow.config` in your current working directory with something like:
 
 ```
 process {
@@ -103,12 +103,24 @@ process {
     penv     = 'smp'
 }
 ```
-
+Check [Nextflow executors](https://www.nextflow.io/docs/latest/executor.html) for more details on the type of executors that Nextflow supports.
 
 ## Run the pipeline
+### Running the mapping pipeline
+To execute the mapping pipeline simply enter the following command on your terminal:
 
+```
+nextflow run sample_map.nf
+```
+You do not need to add the flag "-with-singularity" if you are using the `nextflow.config` file provided as the use of singularity is already defined in the Nextflow configuration file.
 
+### Running the imputation pipeline
+To run the imputation pipeline simply enter the following command on your terminal:
 
+```
+nextflow run sample_imputation.nf
+```
+You do not need to add the flag "-with-singularity" if you are using the `nextflow.config` file provided as the use of singularity is already defined in the Nextflow configuration file.
 
 ##  Tools versions
 
