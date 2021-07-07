@@ -58,7 +58,9 @@ sed '1d' chr$NUM.sites > chr$NUM.txt
 ## Pipeline results
 ### Output files
 
-The mapping pipeline produces two outputs: the mapped reads in the data/mapped directory and a merged and processed file (deduplicated and overlapping read pairs clipped) in the data/merged directory. If you want to intermediate files you can add the "publishDir" command as I show in the following example:
+The mapping pipeline produces two outputs: 
+* the mapped reads in the data/mapped directory
+* a merged and processed file (deduplicated and overlapping read pairs clipped) in the data/merged directory. If you want to intermediate files you can add the "publishDir" command as I show in the following example:
 
 ```
 process	merge { 
@@ -79,6 +81,11 @@ process	merge {
 }
 ```
 
+The imputation pipeline produces:
+* a combined vcf file (with variants from both the reference panel and the horse sample) in the results/combined directory;
+* this file converted in a Plink and Admixture compatible format: .bed, .bim and .fam files in the results/ancestry directory; 
+* a vcf file with the genotypes for the SNPs of interest found in the horse sample. 
+
 ## Pipeline configuration
 
 ### Executors
@@ -97,51 +104,27 @@ process {
 }
 ```
 
-### Pipeline profiles
-
-The Grape pipeline can be run using different configuration profiles. The profiles essentially allow the user to run the analyses using
-different tools and configurations. To specify a profile you can use the [`-profiles` Nextflow option](http://www.nextflow.io/docs/latest/config.html#config-profiles).
-
-The following profiles are available at present:
-
-
-profile | description
-|-|-|
- `gemflux`  | uses `GEMtools` for mapping pipeline and `Flux Capacitor` for isoform expression quantification
- `starrsem` | uses `STAR` for mapping and bigwig and `RSEM` for isoform expression quantification
- `starflux` | uses `STAR` for mapping and `Flux Capacitor` for isoform expression quantification
-
-The default profile is `starrsem`.
 
 ## Run the pipeline
 
-Here is a simple example of how you can run the pipeline:
 
-```
-nextflow -bg run grape-nf --index input-files.tsv --genome refs/hg38.AXYM.fa --annotation refs/gencode.v21.annotation.AXYM.gtf --rg-platform ILLUMINA --rg-center-name CRG -resume > pipeline.log
-```
 
-By default the pipeline execution will stop as far as one of the processes fails. This behaviour can be changed using the [errorStrategy](http://www.nextflow.io/docs/latest/process.html#errorstrategy) process directive, which can also be specified on the command line. For example, to ignore errors and keep processing you can use:
-
-`-process.errorStrategy=ignore`.
-
-It is also possible to run a subset of the pipeline steps using the option ``--steps``. For example, the following command will only run ``mapping`` and ``quantification``:
-
-```
-nextflow -bg run grape-nf --steps mapping,quantification --index input-files.tsv --genome refs/hg38.AXYM.fa --annotation refs/gencode.v21.annotation.AXYM.gtf --rg-platform ILLUMINA --rg-center-name CRG > pipeline.log
-```
 
 ##  Tools versions
 
-The pipeline can be also run natively by installing the required software on the local system or by using [Environment Modules](http://www.nextflow.io/docs/latest/process.html?#module).
+The versions of the tools that have been tested with the pipeline are the following:
 
-The versions of the tools that have been tested so far with the `standard` pipeline profile are the following:
-
-- [bamstats v0.3.4](https://github.com/guigolab/bamstats/releases/tag/v0.3.4)
-- [bedtools v2.19.1](https://github.com/arq5x/bedtools2/releases/tag/v2.19.1)
-- [KentUtils v308](https://github.com/ucscGenomeBrowser/kent/releases/tag/v308_base)
-- [RSEM v1.2.21](https://github.com/deweylab/RSEM/releases/tag/v1.2.21)
-- [RSeQC v2.6.4](http://rseqc.sourceforge.net/)
-- [sambamba v0.7.1](https://github.com/biod/sambamba/releases/tag/v0.7.1)
-- [samtools v1.3](https://github.com/samtools/samtools/releases/tag/1.3.1)
-- [STAR v2.4.0j](https://github.com/alexdobin/STAR/releases/tag/STAR_2.4.0j)
+- [vcftools v0.1.16](https://github.com/vcftools/vcftools/releases/tag/v0.1.16)
+- [samtools v1.2.1](https://github.com/samtools/samtools/releases/tag/1.2.1)
+- [bamtools v2.5.1](https://github.com/pezmaster31/bamtools/releases/tag/v2.5.1)
+- [bcftools v1.9](https://github.com/samtools/bcftools/releases/tag/1.9)
+- [htslib v1.12](https://github.com/samtools/htslib/releases/tag/1.12)
+- [plink v1.9](https://github.com/singemanator/MGL804-PLINK1.9)
+- [tabix v1.9](https://github.com/samtools/tabix)
+- [vcflib v1.0.2](https://github.com/vcflib/vcflib/tree/v1.0.2)
+- [picard v1.139](https://github.com/broadinstitute/picard/releases/tag/1.139)
+- [bwa v0.7.12](https://github.com/lh3/bwa/releases/tag/0.7.12)
+- [angsd v1.7](https://github.com/ANGSD/angsd)
+- [beagle v4.1](https://faculty.washington.edu/browning/beagle/b4_1.html)
+- [fastqc v.0.11.4](https://github.com/s-andrews/FastQC)
+- [bamUtil v1.0.13](https://github.com/statgen/bamUtil/releases/tag/v1.0.13)

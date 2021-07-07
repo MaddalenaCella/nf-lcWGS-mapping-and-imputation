@@ -73,9 +73,9 @@ process SNP_calling {
 
     script:
     """
-    /opt/view/bin/angsd sites index $snps
+    angsd sites index $snps
 
-    /opt/view/bin/angsd -i $bam -ref $ref -P 5 \
+    angsd -i $bam -ref $ref -P 5 \
     -out ${snps.simpleName} -sites $snps -r ${snps.simpleName}: \
     -uniqueOnly 1 -remove_bads 1 -only_proper_pairs 1 \
     -trim 0 -C 50 -baq 1 -minMapQ 20 -minQ 20 \
@@ -367,7 +367,7 @@ process pheno_sites_idx {
 
     script:
     """
-    /opt/view/bin/angsd sites index $phenofile
+    angsd sites index $phenofile
     """
 }
 
