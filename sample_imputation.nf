@@ -63,13 +63,13 @@ process SNP_calling {
     label 'angsd'
 
     input:
-	    path snps from snp_ch //you can remove if it doesn't work
+	path snps from snp_ch //you can remove if it doesn't work
         path bam from params.bamfile
         path bam_idx from params.indexed
         path ref from params.reference
 
     output:
-	path "${snps.simpleName}.bcf" into SNP_call_ch, SNP2_call_ch
+	path "${snps.simpleName}.bcf" into SNP_call_ch
 
     script:
     """
@@ -89,7 +89,7 @@ process bcf_to_vcf {
     label 'bcftools'
     
     input:
-        path bcf from SNP2_call_ch.flatten()
+        path bcf from SNP_call_ch.flatten()
         path name from params.samplename
     
     output:
@@ -111,7 +111,7 @@ process imputation {
         path deco_ref from decompressed_ch
 
     output:
-        path "${snps.simpleName}*.gz" into imputed_ch, imputed2_ch
+        path "${snps.simpleName}*.gz" into imputed_ch
 
     script:
     """
@@ -125,6 +125,7 @@ process imputation {
 process index_and_concat {
 
     label 'bcftools'
+    publishDir params.imputed, mode:'copy'
 
     input:
         path snps_beagle from imputed_ch
@@ -142,16 +143,17 @@ process index_and_concat {
 process index_concatenated {
 
     label 'tabix'
+    publishDir params.imputed, mode:'copy'
 
     input:
-        path concatenated from concat_ch.unique()
+        path concatenated from concat_ch.collectFile(name: 'Merged.vcf.gz')
     
     output:
-        path ('*') into idx_concatenated_ch, idx_concatenated2_ch
+        path ('Merged.vcf.gz.tbi') into idx_concat_ch, idx_concatenated_ch
         
     script:
     """
-    tabix -f -p vcf $concatenated
+    tabix -f $concatenated
     """
 }
 
@@ -162,7 +164,8 @@ process annotate {
 
     input:
         path concatenated from concat2_ch.unique()
-       
+        path idx from idx_concat_ch
+
     output:
         path ('MergedNoFI.vcf.gz') into annotated_ch, annotated2_ch
         
@@ -189,6 +192,7 @@ process index_annotated {
     """
 }
 
+
 process concat_phased {
 
     label 'bcftools'
@@ -197,7 +201,7 @@ process concat_phased {
         path phased from phased2_ch
 
     output:
-        path ('RefPanel.vcf.gz') into concat_ref_ch, concat2_ref_ch, concat3_ref_ch
+        path ('RefPanel.vcf.gz') into concat_ref_ch
         
     script:
     """
@@ -207,29 +211,13 @@ process concat_phased {
 
 }
 
-process index_concat_ref {
-
-    label 'tabix'
-
-    input:
-        path concatenated from concat_ref_ch.unique() //to remove replicates from channel
-    
-    output:
-        path ('*') into idx_concatenated_ref_ch
-        
-    script:
-    """
-    tabix -f -p vcf $concatenated
-    """
-}
-
 process annotate_ref {
 
     label 'bcftools'
     publishDir params.ref, mode:'copy'
 
     input:
-        path concatenated from concat2_ref_ch.unique()
+        path concatenated from concat_ref_ch.unique()
        
     output:
         path ('*') into annotated_ref_ch, annotated2_ref_ch
@@ -247,7 +235,7 @@ process index_annotated_ref {
     label 'tabix'
 
     input:
-        path annotated from annotated_ref_ch
+        path annotated from annotated_ref_ch.collectFile(name: 'RefPanelNoFI.vcf.gz')
     
     output:
         path ('*') into idx_annotated_ref_ch
@@ -263,10 +251,10 @@ process combine {
     publishDir params.combined, mode:'copy'
 
     input:
-        path annotated from annotated2_ch.unique()
-        path annotated_ref from annotated2_ref_ch.unique()
-        path idx_ann from idx_annotated_ch.unique()
-        path idx_ann_ref from idx_annotated_ref_ch.unique()
+        path annotated from annotated2_ch
+        path annotated_ref from annotated2_ref_ch.collectFile(name: 'RefPanelNoFI.vcf.gz')
+        path idx_ann from idx_annotated_ch
+        path idx_ann_ref from idx_annotated_ref_ch
     
     output:
         path ('combinedNoFI.vcf') into combined_ch, combined2_ch
@@ -282,7 +270,7 @@ process singletons_list {
     label 'vcftools'
 
     input:
-        path combined from combined_ch.unique() 
+        path combined from combined_ch
         
     output:
         path ('combined*') into singletons_ch
@@ -320,7 +308,7 @@ process LD_pruning_positions {
     label 'plink'
 
     input:
-        path nosingletons from nosingletons_ch.unique()
+        path nosingletons from nosingletons_ch
 
     output:
     	path ('final-noLD.prune.in') into to_keep_ch
@@ -329,7 +317,7 @@ process LD_pruning_positions {
     script:
 
     """
-    plink1.9 --vcf $nosingletons --maf 0.01 --indep-pairwise 50 5 0.2 --horse --out final-noLD
+    plink1.9 --vcf $nosingletons --const-fid 0 --maf 0.01 --indep-pairwise 50 5 0.2 --horse --out final-noLD
     """
 }
 
@@ -352,7 +340,7 @@ process LD_pruning { //plink is compatible with both Admixture and Plink --pca. 
     script:
 
     """
-    plink1.9 --vcf $nosingletons --extract $prune_in --make-bed --horse --out PCA_ready
+    plink1.9 --vcf $nosingletons --extract $prune_in --make-bed --horse --const-fid 0 --out PCA_ready
     """
 }
 
@@ -363,14 +351,13 @@ process pheno_sites_idx {
         path phenofile from phenopos2_ch
 
     output:
-        path ("*") into idx_pheno_file_ch, idx_pheno_file2_ch
+        path ("*") into idx_pheno_file_ch
 
     script:
     """
     angsd sites index $phenofile
     """
 }
-
 
 process pheno_search {
 
@@ -380,8 +367,8 @@ process pheno_search {
     input:
         path concatenated from concat3_ch
         path pheno_pos from phenopos_ch
-	    path idx_pos from idx_pheno_file_ch	
-	    path idx from idx_concatenated2_ch
+	path idx_pos from idx_pheno_file_ch	
+	path idx from idx_concatenated_ch
         
     output:
         path ('pheno_sample*') into phenotype_ch

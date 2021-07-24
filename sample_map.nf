@@ -61,7 +61,7 @@ process fastqc {
     """
 }
 
-process trim2 {
+process trim {
     publishDir params.trim, mode:'copy'
 
     input:
@@ -69,8 +69,7 @@ process trim2 {
     
     output:
         tuple name, path("${name}_{1,2}_trimmed.fq") into trimmed_ch
-        tuple name, path("${name}_{1,2}_trimmed_unpaired.fq") into unpaired_ch
-
+        
     script:
     """
     java -jar /Trimmomatic-0.38/trimmomatic-0.38.jar PE $unzipped \
@@ -80,25 +79,20 @@ process trim2 {
 }
 
 process index {
+    label 'index'
     publishDir params.index, mode:'copy'
     
     input:
         path reference from params.reference
      
     output:
-        file "*.{amb,ann,bwt,pac,sa}" into index_ch, index1_ch
+        file "*.{amb,ann,bwt,pac,sa}" into index_ch
 
     script:       
     """
     bwa index $reference 
     """
 }
-
-params.trimmed = "$baseDir/data/trimmed/*_{1,2}_trimmed.fq"
-
-Channel
-    .fromFilePairs( params.trimmed, checkIfExists: true )
-    .set{ tomap_ch }
 
 process bwa_mem {
     
@@ -184,16 +178,14 @@ process	merge {
 process remove_duplicates {
     
     input:
-        path(input) from sam2_merged.collectFile(name: 'merged.bam')
+        path input from sam2_merged.collectFile(name: 'merged.bam')
 
     output:
         path "merged_dedup.bam" into dedup_ch
-        path "merged.dupstat.txt" into dupstat
-
+    
     script:
     """
-    java -jar /opt/conda/bin/picard.jar MarkDuplicates I=$input O=merged_dedup.bam M=merged.dupstat.txt\
-    VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true
+    samtools rmdup $input merged_dedup.bam
     """
 }
 
@@ -206,7 +198,7 @@ process clip_overlap {
         path(input) from dedup_ch
 
     output:
-        path "merged_dedup_overlapclipped.bam" into clipoverlap_ch, clipoverlap2_ch
+        path "merged_dedup_overlapclipped.bam" into clipoverlap_ch
 
     script:
     """

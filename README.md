@@ -7,6 +7,12 @@ This pipeline allows mapping and imputation of non-human samples sequenced at lo
 
 It uses [Nextflow](http://www.nextflow.io) as the execution backend. Please check [Nextflow documentation](http://www.nextflow.io/docs/latest/index.html) for more information.
 
+## DAG of mapping pipeline
+![Screenshot](dag/mapping.png)
+
+## DAG of imputation pipeline
+![Screenshot](dag/imputation.png)
+
 ## Requirements
 
 - Unix-like operationg system (Linux, MacOS, etc)
@@ -25,7 +31,6 @@ It uses [Nextflow](http://www.nextflow.io) as the execution backend. Please chec
 
     ```
     sh set-up-images.sh
-
     ```
 3. Add the input parameters in the /data directory. For more details look at the dedicated section below. 
 
@@ -134,7 +139,6 @@ The versions of the tools that have been tested with the pipeline are the follow
 - [plink v1.9](https://github.com/singemanator/MGL804-PLINK1.9)
 - [tabix v1.9](https://github.com/samtools/tabix)
 - [vcflib v1.0.2](https://github.com/vcflib/vcflib/tree/v1.0.2)
-- [picard v1.139](https://github.com/broadinstitute/picard/releases/tag/1.139)
 - [bwa v0.7.12](https://github.com/lh3/bwa/releases/tag/0.7.12)
 - [angsd v1.7](https://github.com/ANGSD/angsd)
 - [beagle v4.1](https://faculty.washington.edu/browning/beagle/b4_1.html)

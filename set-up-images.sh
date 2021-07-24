@@ -7,9 +7,6 @@ singularity pull docker://biocontainers/tabix:v1.9-11-deb_cv1
 ## angsd image
 singularity pull docker://ohdzagenetics/angsd:latest
 
-## picard image
-singularity pull docker://biocontainers/picard:v1.139_cv3
-
 ## bwa and samtools image
 singularity pull docker://dukegcb/bwa-samtools:latest
 
