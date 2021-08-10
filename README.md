@@ -44,7 +44,7 @@ Singularity is the preferred container engine for running the pipeline in an HPC
 #### Mapping pipeline inputs
 Before you deploy the mapping pipeline, make sure you have the raw reds file in fq.gz format in the data/raw_reads/ directory and the reference genome sequence of your species in the ref_genome/ directory. Edit the name of your files as appropriate in the sample_map.nf script. 
 
-#### Mapping pipeline inputs
+#### Imputation pipeline inputs
 Before you deploy the imputation pipeline, the input files you need to have in your code directory are the following:
 * the mapped bam (.bam) file and its index file (.bai) in the data/merged/ directory (this is the output of the mapping pipeline, but you can add your own files and change the name accordingly in the sample_imputation.nf script)
 * the reference genome sequence of your species in the ref_genome/ directory.
